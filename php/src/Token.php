@@ -8,7 +8,9 @@ class Token implements JsonSerializable {
 
     protected TokenType $type;
     protected Token|string|int|array $value;
+    protected Token|string|int|array $tail;
     protected string $match;
+    protected int $index;
 
     private function __construct(){}
         
@@ -50,6 +52,17 @@ class Token implements JsonSerializable {
         return $this->match;
     }
     
+    public function setIndex(int $index): self
+    {
+        $this->index = $index;
+        return $this;
+    }
+    
+    public function getIndex(): int
+    {
+        return $this->index;
+    }
+    
     public function is(TokenType $tokenType): bool
     {
         return $this->type == $tokenType;
@@ -57,10 +70,24 @@ class Token implements JsonSerializable {
     
     public function jsonSerialize(): mixed
     {
-        return [
-            "type"  => $this->type,
-            "value" => $this->value,
-            "match" => $this->match,
-        ];
+        $ret = [];
+        
+        if (isset($this->type)) {
+            $ret['type'] = $this->type;
+        }
+        
+        if (isset($this->value)) {
+            $ret['value'] = $this->value;
+        }
+        
+        if (isset($this->match)) {
+            $ret['match'] = $this->match;
+        }
+        
+        if (isset($this->index)) {
+            $ret['index'] = $this->index;
+        }
+
+        return $ret;
     }
 }

@@ -2,7 +2,9 @@
 
 namespace corrupt\tagnarok;
 
-class TagToken extends Token {
+use JsonSerializable;
+
+class TagToken extends Token implements JsonSerializable {
 
     protected string      $name;
     protected string|null $defaultParameter = null;
@@ -60,5 +62,25 @@ class TagToken extends Token {
     public function getContent(): array|null
     {
         return $this->getContent();
+    }
+    
+
+    public function jsonSerialize(): mixed
+    {
+        $ret = parent::jsonSerialize();
+        
+        if (isset($this->defaultParameter)) {
+            $ret['defaultParameter'] = $this->defaultParameter;
+        }
+        
+        if (isset($this->parameters)) {
+            $ret['parameters'] = $this->parameters;
+        }
+        
+        if (isset($this->content)) {
+            $ret['content'] = $this->content;
+        }
+
+        return $ret;
     }
 }

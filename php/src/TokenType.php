@@ -2,7 +2,9 @@
 
 namespace corrupt\tagnarok;
 
-enum TokenType {
+use JsonSerializable;
+
+enum TokenType implements JsonSerializable {
     case Text;
     case Word;
     case Space;
@@ -20,4 +22,9 @@ enum TokenType {
     
     case EOF;
     case NULL;
+    
+    function jsonSerialize(): mixed
+    {
+        return $this->name;
+    }
 }

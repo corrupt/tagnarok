@@ -11,4 +11,6 @@ $text = "123 aaa [band]Emperor[/band] [album id=1234]This is a [b][i]test[/i][/b
 $ast = $parser->parse($text);
 
 //print_r($ast);
-echo json_encode($ast);
+$test = json_encode($ast);
+
+echo $test;
