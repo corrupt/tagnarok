@@ -2,6 +2,8 @@
 
 namespace corrupt\tagnarok;
 
+use Google\Service\BigtableAdmin\StandardIsolation;
+
 require_once "utils.php";
 
 class Parser {
@@ -13,42 +15,41 @@ class Parser {
     private array $context = [];
     
     public array $tags = [
-        'album',
-        'article',
-        'artiest',
-        'b',
-        'band',
-        'bandcamp',
-        'br',
-        'center',
-        'center',
-        'color',
-        'date',
-        'email',
-        'font',
-        'glow',
-        'hr',
-        'i',
-        'img',
-        'left',
-        'list',
-        'mention',
-        'noparse',
-        'quote',
-        'review',
-        'right',
-        's',
-        'size',
-        'soundcloud',
-        'spotify',
-        'table',
-        'td',
-        'thread',
-        'tr',
-        'url',
-        'user',
-        'vimeo',
-        'youtube',
+        'album' => false,
+        'article' => false,
+        'artist' => false,
+        'b' => true,
+        'band' => false,
+        'bandcamp' => false,
+        'br' => false,
+        'center' => true,
+        'color' => true,
+        'date' => false,
+        'email' => false,
+        'font' => true,
+        'glow' => true,
+        'hr' => false,
+        'i' => false,
+        'img' => false,
+        'left' => true,
+        'list' => true,
+        'mention' => false,
+        'noparse' => true,
+        'quote' => true,
+        'review' => true,
+        'right' => true,
+        's' => true,
+        'size' => true,
+        'soundcloud' => false,
+        'spotify' => false,
+        'table' => true,
+        'td' => true,
+        'thread' => false,
+        'tr' => true,
+        'url' => false,
+        'user' => true,
+        'vimeo' => false,
+        'youtube' => false,
     ];
     
     function __construct()
@@ -58,7 +59,12 @@ class Parser {
     
     protected function isValidTag(string $name): bool
     {
-        return in_array($name, $this->tags);
+        return in_array($name, array_keys($this->tags));
+    }
+    
+    protected function tagRequiresCloser(string $name): bool
+    {
+        return $this->tags[$name] ?? false;
     }
     
     protected function getContext(): string|null
@@ -139,59 +145,77 @@ class Parser {
     {
         return Token::new()
             ->setType(TokenType::Text)
-            ->setValue($this->TokenList());
+            ->setValue($this->AST());
+    }
+    
+
+    function descendTagToken(TagToken $token): Token
+    {
+        $this->pushContext($token->getName());
+
+        $next = $this->AST();
+
+        if ($this->getContext() == $token->getName()) {
+            $token->setContent($next);
+        } else {
+            if ($this->tagRequiresCloser($token->getName())) {
+                $token = tag2word($token);
+            }
+            $token->setTail($next);
+        }
+
+        $this->popContext();
+
+        return $token;
     }
 
     
-    function TokenList(): array
+    /**
+     * Checks if a tag token is among the list of allowed tags,
+     * converts it to word otherwise
+     * @param TagToken $token 
+     * @return Token 
+     */
+    function sanitizeTokenType(Token $token): Token
     {
-        $tokenList = [];
-        
-        while ($this->lookahead !== null) {
-            
-            $literal = $this->literal();
-
-            switch (true) {
-
-                case $literal instanceof TagToken && get_class($literal) == TagToken::class:
-                    
-                    $this->pushContext($literal->getName());
-                    $this->storePosition(); 
-
-                    $next = $this->TokenList();
-
-                    if ($this->getContext() == $literal->getName()) {
-                        $literal->setContent($next);
-                        $this->removePosition();
-                    } else {
-                        $this->backtrack();
-                    }
-
-                    $this->popContext();
-
-                    break;
-
-                case $literal instanceof ClosingTagToken && get_class($literal) == ClosingTagToken::class:
-
-                    if ($this->getContext() == $literal->getName()) {
-                        return $tokenList;
-                    }
-                    
-                    $literal = Token::new()
-                        ->setType(TokenType::Word)
-                        ->setValue($literal->getMatch());
-
-                    break;
-            }
-
-            array_push($tokenList, $literal);
+        if ($token instanceof TagToken && !$this->isValidTag($token->getName())) {
+            $token = tag2word($token);
         }
-        
+        return $token;
+    }
+    
+
+    function AST(): Token
+    {
         if ($this->lookahead == null) {
             $this->popContext();
+            return Token::new(TokenType::EOF);
         }
         
-        return $tokenList;
+        $token = $this->literal();
+        $next  = $this->AST();
+        
+        if ($token instanceof TagToken && get_class($token) == TagToken::class) {
+            $this->pushContext($token->getName());
+            
+            if ($this->lookahead == null) {
+                $token->setTail($next);
+            } else {
+                $token->setContent($next);
+                $this->popContext();
+            }
+
+            return $token;
+        }
+        
+        if ($token instanceof ClosingTagToken && get_class($token) == ClosingTagToken::class) {
+            if ($this->getContext() == $token->getName()) {
+                return $token;
+            }
+            return tag2word($token);
+        }
+        
+        return $token->setTail($next);
     }
 
     

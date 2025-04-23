@@ -83,7 +83,7 @@ class Tokenizer {
     
     public function backtrack(): self
     {
-        $this->cursor = array_pop($this->backtrackHistory);
+        $this->cursor = array_pop($this->backtrackHistory) ?? 0;
         return $this;
     }
     

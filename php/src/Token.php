@@ -63,6 +63,17 @@ class Token implements JsonSerializable {
         return $this->index;
     }
     
+    public function getTail(): Token|string|int|array
+    {
+        return $this->tail;
+    }
+    
+    public function setTail(Token|string|int|array $tail): self
+    {
+        $this->tail = $tail;
+        return $this;
+    }
+    
     public function is(TokenType $tokenType): bool
     {
         return $this->type == $tokenType;
@@ -86,6 +97,10 @@ class Token implements JsonSerializable {
         
         if (isset($this->index)) {
             $ret['index'] = $this->index;
+        }
+        
+        if (isset($this->tail)) {
+            $ret['tail'] = $this->tail;
         }
 
         return $ret;

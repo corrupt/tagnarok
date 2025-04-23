@@ -53,7 +53,7 @@ class TagToken extends Token implements JsonSerializable {
         return $this->defaultParameter;
     }
     
-    public function setContent(array|null $content): self
+    public function setContent(Token $content): self
     {
         $this->content = $content;
         return $this;
@@ -68,6 +68,10 @@ class TagToken extends Token implements JsonSerializable {
     public function jsonSerialize(): mixed
     {
         $ret = parent::jsonSerialize();
+        
+        if (isset($this->name)) {
+            $ret['name'] = $this->name;
+        }
         
         if (isset($this->defaultParameter)) {
             $ret['defaultParameter'] = $this->defaultParameter;
