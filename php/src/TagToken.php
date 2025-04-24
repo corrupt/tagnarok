@@ -9,13 +9,13 @@ class TagToken extends Token implements JsonSerializable {
     protected string      $name;
     protected string|null $defaultParameter = null;
     protected array|null  $parameters = null;
-    protected array|null  $content = null;
+    protected Token|array|null  $content = null;
     
     private function __construct(){}
     
     public static function new(): TagToken
     {
-        return (new TagToken())
+        return new TagToken()
             ->setType(TokenType::Tag)
             ;
     }

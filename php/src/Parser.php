@@ -187,32 +187,40 @@ class Parser {
 
     function AST(): Token
     {
-        if ($this->lookahead == null) {
+        if ($this->lookahead === null) {
             $this->popContext();
             return Token::new(TokenType::EOF);
         }
         
         $token = $this->literal();
         $next  = $this->AST();
-        
-        if ($token instanceof TagToken && get_class($token) == TagToken::class) {
-            $this->pushContext($token->getName());
-            
-            if ($this->lookahead == null) {
-                $token->setTail($next);
-            } else {
-                $token->setContent($next);
-                $this->popContext();
-            }
 
-            return $token;
-        }
-        
-        if ($token instanceof ClosingTagToken && get_class($token) == ClosingTagToken::class) {
-            if ($this->getContext() == $token->getName()) {
+        if ($token instanceof TagToken && get_class($token) === TagToken::class) {
+            
+
+            if ($this->getContext() === $token->getName()) {
+                if ($this->tagRequiresCloser($token->getName())) {
+                    $token->setContent($next);
+                } else {
+                    $token->setTail($next);
+                }
+                $this->popContext();
+                return $token;
+            } else {
+                if ($this->tagRequiresCloser($token->getName())) {
+                    $token->setTail(tag2word($token));
+                } else {
+                    $token->setContent($next);
+                }
                 return $token;
             }
-            return tag2word($token);
+
+            return tag2word($token); // Convert unmatched closing tags to plain text
+        }
+
+        if ($token instanceof ClosingTagToken && get_class($token) === ClosingTagToken::class) {
+            $this->pushContext($token->getName());
+            
         }
         
         return $token->setTail($next);
@@ -294,7 +302,7 @@ class Parser {
     function tag(): Token|null
     {
         $token  = $this->lookahead;
-        $tag    = TagToken::new();
+        $tag    = TagToken::new()->setMatch($token->getValue());
 
         $value  = substr($token->getValue(), 1, -1);
         $params = preg_split('/\s+/', $value);
@@ -302,7 +310,7 @@ class Parser {
         
         switch (true) {
             case str_contains($name, "="):
-                [$key, $value] = explode("=", $name);
+                [$key, $value] = explode("=", $name, 2);
                 $tag->setName($key);
                 $tag->setDefaultParameter($value);
                 break;

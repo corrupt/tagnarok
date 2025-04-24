@@ -19,7 +19,7 @@ class Token implements JsonSerializable {
         return new Token();
     }
     
-    public function setType(TokenType $type): self
+    public function setType(TokenType $type): static
     {
         $this->type = $type;
         return $this;
@@ -30,7 +30,7 @@ class Token implements JsonSerializable {
         return $this->type;
     }
     
-    public function setValue(Token|int|string|array $value): self
+    public function setValue(Token|int|string|array $value): static
     {
         $this->value = $value;
         return $this;
@@ -41,7 +41,7 @@ class Token implements JsonSerializable {
         return $this->value;
     }
     
-    public function setMatch(string $match): self
+    public function setMatch(string $match): static
     {
         $this->match = $match;
         return $this;
@@ -52,7 +52,7 @@ class Token implements JsonSerializable {
         return $this->match;
     }
     
-    public function setIndex(int $index): self
+    public function setIndex(int $index): static
     {
         $this->index = $index;
         return $this;
@@ -68,7 +68,7 @@ class Token implements JsonSerializable {
         return $this->tail;
     }
     
-    public function setTail(Token|string|int|array $tail): self
+    public function setTail(Token|string|int|array $tail): static
     {
         $this->tail = $tail;
         return $this;
