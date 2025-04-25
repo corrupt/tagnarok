@@ -11,7 +11,7 @@ enum TokenType implements JsonSerializable {
     case Newline;
     case Number;
     case Tag;
-    case CloseTag;
+    case EndTag;
     case TagOpenBracket;
     case TagCloseBracket;
     case Slash;

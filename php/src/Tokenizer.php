@@ -14,8 +14,6 @@ class Tokenizer {
     private string $string = '';
     private int    $cursor = 0;
     
-    private array  $backtrackHistory = [];
-    
     private array  $spec = [];    
 
     public function init(string $string): self
@@ -25,7 +23,7 @@ class Tokenizer {
         $this->spec = [
 
             new Spec(
-                type:  TokenType::CloseTag,
+                type:  TokenType::EndTag,
                 regex: '/^\[\/[^\]]+\]/'
             ),
             new Spec(
@@ -68,24 +66,6 @@ class Tokenizer {
         }
         return null;
     }
-
-    public function storePosition(): self
-    {
-        array_push($this->backtrackHistory, $this->cursor);
-        return $this;
-    }
-    
-    public function removePosition(): self
-    {
-        array_pop($this->backtrackHistory);
-        return $this;
-    }
-    
-    public function backtrack(): self
-    {
-        $this->cursor = array_pop($this->backtrackHistory) ?? 0;
-        return $this;
-    }
     
     public function getNextToken(): Token|null
     {
@@ -106,12 +86,15 @@ class Tokenizer {
                 return $this->getNextToken();
             }
             
-            return Token::new()
-                ->setType($spec->type)
-                ->setValue($value);
+            return new Token(
+                $spec->type,
+                match: $value,
+                index: $this->cursor,
+            );
         }
 
         $this->error("Unexpected token at position {$this->cursor}: '{$string[0]}'");
+        return null;
     }
     
     private function error(string $message): void

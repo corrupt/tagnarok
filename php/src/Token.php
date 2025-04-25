@@ -6,77 +6,65 @@ use JsonSerializable;
 
 class Token implements JsonSerializable {
 
-    protected TokenType $type;
-    protected Token|string|int|array $value;
-    protected Token|string|int|array $tail;
-    protected string $match;
-    protected int $index;
+    public function __construct(
 
-    private function __construct(){}
+        public TokenType $type
+        {
+            set => $this->type = $value;
+            get => $this->type;
+        },
+
+        public string|null $name = null
+        {
+            set => $this->name = $value;
+            get => $this->name;
+        },
+            
+        public Token|null $tail = null
+        {
+            set => $this->tail = $value;
+            get => $this->tail;
+        },
+
+        public Token|null $content = null
+        {
+            set => $this->content = $value;
+            get => $this->content;
+        },
+            
+        public Token|null $endTag = null
+        {
+            set => $this->terminator = $value;
+            get => $this->terminator;
+        },
+
+        public string|null $match = null
+        {
+            set => $this->match = $value;
+            get => $this->match;
+        },
+            
+        public int|null $index = null
+        {
+            set => $this->index = $value;
+            get => $this->index;
+        },
+
+        public string|null $defaultParameter = null
+        {
+            set => $this->defaultParameter = $value;
+            get => $this->defaultParameter;
+        },
+
+        public array $parameters = []
+        {
+            set => $this->parameters = $value;
+            get => $this->parameters;
+        }
+    ) {}
         
-    public static function new(): Token
-    {
-        return new Token();
-    }
-    
-    public function setType(TokenType $type): static
-    {
-        $this->type = $type;
-        return $this;
-    }
-    
-    public function getType(): TokenType
-    {
-        return $this->type;
-    }
-    
-    public function setValue(Token|int|string|array $value): static
-    {
-        $this->value = $value;
-        return $this;
-    }
-    
-    public function getValue(): int|string
-    {
-        return $this->value;
-    }
-    
-    public function setMatch(string $match): static
-    {
-        $this->match = $match;
-        return $this;
-    }
-    
-    public function getMatch(): string
-    {
-        return $this->match;
-    }
-    
-    public function setIndex(int $index): static
-    {
-        $this->index = $index;
-        return $this;
-    }
-    
-    public function getIndex(): int
-    {
-        return $this->index;
-    }
-    
-    public function getTail(): Token|string|int|array
-    {
-        return $this->tail;
-    }
-    
-    public function setTail(Token|string|int|array $tail): static
-    {
-        $this->tail = $tail;
-        return $this;
-    }
-    
-    public function is(TokenType $tokenType): bool
-    {
-        return $this->type == $tokenType;
+    public int $length {
+        get => mb_strlen($this->match ?? '');
     }
     
     public function jsonSerialize(): mixed
@@ -87,16 +75,32 @@ class Token implements JsonSerializable {
             $ret['type'] = $this->type;
         }
         
-        if (isset($this->value)) {
-            $ret['value'] = $this->value;
+        if (null !== $this->name) {
+            $ret['name'] = $this->name;
         }
         
-        if (isset($this->match)) {
+        if (null !== $this->match) {
             $ret['match'] = $this->match;
         }
         
-        if (isset($this->index)) {
+        if (null !== $this->index) {
             $ret['index'] = $this->index;
+        }
+        
+        if (null !== $this->defaultParameter) {
+            $ret['defaultParameter'] = $this->defaultParameter;
+        }
+        
+        if (count($this->parameters) > 0) {
+            $ret['parameters'] = $this->parameters;
+        }
+
+        if (null !== $this->endTag) {
+            $ret['terminator'] = $this->endTag;
+        }
+        
+        if (null !== $this->content) {
+            $ret['content'] = $this->content;
         }
         
         if (isset($this->tail)) {
@@ -105,4 +109,5 @@ class Token implements JsonSerializable {
 
         return $ret;
     }
+    
 }

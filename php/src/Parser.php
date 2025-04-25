@@ -8,6 +8,10 @@ require_once "utils.php";
 
 class Parser {
     
+    public const END_TAG_NON = 0;
+    public const END_TAG_REG = 1;
+    public const END_TAG_OPT = 2;
+    
     private Tokenizer  $tokenizer;
     private string     $string = '';
     private Token|null $lookahead;
@@ -15,41 +19,41 @@ class Parser {
     private array $context = [];
     
     public array $tags = [
-        'album' => false,
-        'article' => false,
-        'artist' => false,
-        'b' => true,
-        'band' => false,
-        'bandcamp' => false,
-        'br' => false,
-        'center' => true,
-        'color' => true,
-        'date' => false,
-        'email' => false,
-        'font' => true,
-        'glow' => true,
-        'hr' => false,
-        'i' => false,
-        'img' => false,
-        'left' => true,
-        'list' => true,
-        'mention' => false,
-        'noparse' => true,
-        'quote' => true,
-        'review' => true,
-        'right' => true,
-        's' => true,
-        'size' => true,
-        'soundcloud' => false,
-        'spotify' => false,
-        'table' => true,
-        'td' => true,
-        'thread' => false,
-        'tr' => true,
-        'url' => false,
-        'user' => true,
-        'vimeo' => false,
-        'youtube' => false,
+        'album'      => self::END_TAG_OPT,
+        'article'    => self::END_TAG_OPT,
+        'artist'     => self::END_TAG_OPT,
+        'b'          => self::END_TAG_REG,
+        'band'       => self::END_TAG_OPT,
+        'bandcamp'   => self::END_TAG_NON,
+        'br'         => self::END_TAG_NON,
+        'center'     => self::END_TAG_REG,
+        'color'      => self::END_TAG_REG,
+        'date'       => self::END_TAG_NON,
+        'email'      => self::END_TAG_NON,
+        'font'       => self::END_TAG_REG,
+        'glow'       => self::END_TAG_REG,
+        'hr'         => self::END_TAG_NON,
+        'i'          => self::END_TAG_REG,
+        'img'        => self::END_TAG_OPT,
+        'left'       => self::END_TAG_REG,
+        'list'       => self::END_TAG_REG,
+        'mention'    => self::END_TAG_NON,
+        'noparse'    => self::END_TAG_REG,
+        'quote'      => self::END_TAG_REG,
+        'review'     => self::END_TAG_REG,
+        'right'      => self::END_TAG_REG,
+        's'          => self::END_TAG_REG,
+        'size'       => self::END_TAG_REG,
+        'soundcloud' => self::END_TAG_OPT,
+        'spotify'    => self::END_TAG_OPT,
+        'table'      => self::END_TAG_REG,
+        'td'         => self::END_TAG_REG,
+        'thread'     => self::END_TAG_OPT,
+        'tr'         => self::END_TAG_REG,
+        'url'        => self::END_TAG_OPT,
+        'user'       => self::END_TAG_OPT,
+        'vimeo'      => self::END_TAG_NON,
+        'youtube'    => self::END_TAG_NON,
     ];
     
     function __construct()
@@ -62,9 +66,16 @@ class Parser {
         return in_array($name, array_keys($this->tags));
     }
     
-    protected function tagRequiresCloser(string $name): bool
+    protected function endTagRequired(Token $token): bool
     {
-        return $this->tags[$name] ?? false;
+        return $token->type === TokenType::Tag
+            && $this->tags[$token->name] === self::END_TAG_REG;
+    }
+    
+    protected function endTagOptional(Token $token): bool
+    {
+        return $token->type === TokenType::Tag
+            && $this->tags[$token->name] === self::END_TAG_OPT;
     }
     
     protected function getContext(): string|null
@@ -92,28 +103,9 @@ class Parser {
 
         return null;
     }
-    
-    protected function backtrack(): self
+
+    function parse(string $string): Token
     {
-        $this->tokenizer->backtrack();
-        $this->tokenizer->removePosition();
-        $this->lookahead = $this->tokenizer->getNextToken();
-        return $this;
-    }
-    
-    protected function storePosition(): self
-    {
-        $this->tokenizer->storePosition();
-        return $this;
-    }
-    
-    protected function removePosition(): self
-    {
-        $this->tokenizer->removePosition();
-        return $this;
-    }
-    
-    function parse(string $string) {
         
         $this->string = $string;
         $this->tokenizer->init($this->string);
@@ -131,8 +123,8 @@ class Parser {
             throw new SyntaxException("Unexpected end of input, expected: '{$tokenType->name}'");
         }
         
-        if ($token->getType() !== $tokenType) {
-            throw new SyntaxException("Unexpected token: '{$token->getType()->name}', expected: '{$tokenType->name}'");
+        if ($token->type !== $tokenType) {
+            throw new SyntaxException("Unexpected token: '{$token->type->name}', expected: '{$tokenType->name}'");
         }
         
         $this->lookahead = $this->tokenizer->getNextToken();
@@ -143,87 +135,73 @@ class Parser {
     
     function text(): Token
     {
-        return Token::new()
-            ->setType(TokenType::Text)
-            ->setValue($this->AST());
+        return new Token(
+            TokenType::Text,
+            tail: $this->AST(),
+        );
     }
-    
-
-    function descendTagToken(TagToken $token): Token
-    {
-        $this->pushContext($token->getName());
-
-        $next = $this->AST();
-
-        if ($this->getContext() == $token->getName()) {
-            $token->setContent($next);
-        } else {
-            if ($this->tagRequiresCloser($token->getName())) {
-                $token = tag2word($token);
-            }
-            $token->setTail($next);
-        }
-
-        $this->popContext();
-
-        return $token;
-    }
-
-    
-    /**
-     * Checks if a tag token is among the list of allowed tags,
-     * converts it to word otherwise
-     * @param TagToken $token 
-     * @return Token 
-     */
-    function sanitizeTokenType(Token $token): Token
-    {
-        if ($token instanceof TagToken && !$this->isValidTag($token->getName())) {
-            $token = tag2word($token);
-        }
-        return $token;
-    }
-    
 
     function AST(): Token
     {
         if ($this->lookahead === null) {
             $this->popContext();
-            return Token::new(TokenType::EOF);
+            return new Token(TokenType::EOF);
         }
         
         $token = $this->literal();
-        $next  = $this->AST();
+            
+        switch ($token->type) {
+            
+            case TokenType::Tag:
 
-        if ($token instanceof TagToken && get_class($token) === TagToken::class) {
+                if ($this->endTagRequired($token) || $this->endTagOptional($token)) {
+
+                    $this->pushContext($token->name);
+                    $next = $this->AST();
+                    
+                    if (hasEndTag($next, $token->name)) {
+                        $this->popContext();
+                        $token->endTag  = getEndTag($next);
+                        $token->content = stripEndTag($next);
+                        $token->tail    = $this->AST();
+                    } else {
+                        $token = $this->endTagRequired($token)
+                            ? $token = tag2word($token)
+                            : $token;
+                        $token->tail = $next;
+                    }
+                    return $token;
+                }
+                
+                $token->tail = $this->AST();
+                return $token;
+                
+            case TokenType::EndTag:
+                
+                return $this->getContext() === $token->name
+                    ? $token
+                    : tag2word($token);
             
 
-            if ($this->getContext() === $token->getName()) {
-                if ($this->tagRequiresCloser($token->getName())) {
-                    $token->setContent($next);
-                } else {
-                    $token->setTail($next);
-                }
-                $this->popContext();
-                return $token;
-            } else {
-                if ($this->tagRequiresCloser($token->getName())) {
-                    $token->setTail(tag2word($token));
-                } else {
-                    $token->setContent($next);
-                }
-                return $token;
-            }
+            case TokenType::Word:
+            case TokenType::Space:
 
-            return tag2word($token); // Convert unmatched closing tags to plain text
-        }
-
-        if ($token instanceof ClosingTagToken && get_class($token) === ClosingTagToken::class) {
-            $this->pushContext($token->getName());
+                $token->tail = $this->AST();
+                return $token;
             
+
+            case TokenType::EOF:
+
+                $token->tail = null;
+                return $token;
+                
+
+            default:
+
+                $token = tag2word($token);
+                $token->tail = $this->AST();
+                return $token;
         }
-        
-        return $token->setTail($next);
     }
 
     
@@ -235,22 +213,21 @@ class Parser {
      *  
      * @throws SyntaxException
      */
-    function literal(): Token|null
+    function literal(): Token
     {
         if ($this->lookahead === null) {
-            return Token::new()
-                ->setType(TokenType::EOF);
+            return new Token(TokenType::EOF);
         }
 
-        return match($this->lookahead->getType()) {
+        return match($this->lookahead->type) {
 
-            TokenType::Space    => $this->space(),
-            TokenType::Newline  => $this->newLine(),
-            TokenType::Tag      => $this->tag(),
-            TokenType::CloseTag => $this->closingTag(),
-            TokenType::Word     => $this->word(),
+            TokenType::Space   => $this->space(),
+            TokenType::Newline => $this->newLine(),
+            TokenType::Tag     => $this->tag(),
+            TokenType::EndTag  => $this->endTag(),
+            TokenType::Word    => $this->word(),
             
-            default             => throw new SyntaxException("Unknown token Type"),
+            default            => throw new SyntaxException("Unknown token Type"),
         };
     }
 
@@ -267,20 +244,7 @@ class Parser {
         return $this->consume(TokenType::Word);
     }
 
-    
-    /**
-     * NumericLiteral
-     *   : Number
-     *   ;
-     * @return Token 
-     * @throws SyntaxException 
-     */
-    function number(): Token
-    {
-        return $this->consume(TokenType::Number);
-    }
 
-    
     function space(): Token
     {
         return $this->consume(TokenType::Space);
@@ -299,45 +263,49 @@ class Parser {
      *   ;
      * @return void 
      */
-    function tag(): Token|null
+    function tag(): Token
     {
         $token  = $this->lookahead;
-        $tag    = TagToken::new()->setMatch($token->getValue());
+        $tag    = new Token(
+            TokenType::Tag,
+            match: $token->match,
+            index: $token->index,
+        );
 
-        $value  = substr($token->getValue(), 1, -1);
+        $value  = substr($token->match, 1, -1);
         $params = preg_split('/\s+/', $value);
         $name   = array_shift($params);
         
         switch (true) {
             case str_contains($name, "="):
                 [$key, $value] = explode("=", $name, 2);
-                $tag->setName($key);
-                $tag->setDefaultParameter($value);
+                $tag->name = $key;
+                $tag->defaultParameter = $value;
                 break;
             default:
-                $tag->setName($name);
+                $tag->name = $name;
                 break;
         }
 
-        $tag->setParameters(
-            parseParameters($params)
-        );
+        $tag->parameters = parseParameters($params);
 
         $this->consume(TokenType::Tag);
         return $tag;
-        
     }
     
 
-    function closingTag(): TagToken
+    function endTag(): Token
     {
         $token = $this->lookahead;
-        $value = substr($token->getValue(), 2, -1);
+        $value = substr($token->match, 2, -1);
         
-        $this->consume(TokenType::CloseTag);
+        $this->consume(TokenType::EndTag);
         
-        return ClosingTagToken::new()
-            ->setName($value)
-            ->setMatch($token->getValue());
+        return new Token(
+            TokenType::EndTag,
+            match: $token->match,
+            index: $token->index,
+            name: $value,
+        );
     }
 }
