@@ -96,7 +96,7 @@ class Token implements JsonSerializable {
         }
 
         if (null !== $this->endTag) {
-            $ret['terminator'] = $this->endTag;
+            $ret['endTag'] = $this->endTag;
         }
         
         if (null !== $this->content) {
