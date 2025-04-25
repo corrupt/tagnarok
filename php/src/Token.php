@@ -34,8 +34,8 @@ class Token implements JsonSerializable {
             
         public Token|null $endTag = null
         {
-            set => $this->terminator = $value;
-            get => $this->terminator;
+            set => $this->endTag = $value;
+            get => $this->endTag;
         },
 
         public string|null $match = null
